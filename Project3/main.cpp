@@ -87,6 +87,8 @@ public:
     virtual sf::Text getTextNode() const = 0;
     virtual sf::Vector2f getShapeCenterPosition() const = 0;
     virtual void moveNode(const sf::Vector2f& delta) = 0;
+    virtual sf::FloatRect getBounds() const = 0;
+    virtual void setSpeed(const sf::Vector2f& speed) = 0;
     virtual ~ShapeNode() = default;
 };
 
@@ -179,6 +181,16 @@ public:
     {
         node.move(delta);
     }
+
+    sf::FloatRect getBounds() const override
+    {
+        return node.getGlobalBounds();
+    }
+
+    void setSpeed(const sf::Vector2f& speed) override
+    {
+        m_speed = speed;
+    }
 };
 
 class RectangleShapeNode : public ShapeNode
@@ -228,14 +240,6 @@ public:
         return m_speed;
     }
 
-    const sf::Vector2f getShapeCenterPosition()
-    {
-        return sf::Vector2f(
-            node.getPosition().x + node.getLocalBounds().width / 2,
-            node.getPosition().y + node.getLocalBounds().height / 2
-        );
-    }
-
     sf::Vector2f getShapeCenterPosition() const override
     {
         return sf::Vector2f(
@@ -263,7 +267,47 @@ public:
     {
         node.move(delta);
     }
+
+    sf::FloatRect getBounds() const override
+    {
+        return node.getGlobalBounds();
+    }
+
+    void setSpeed(const sf::Vector2f& speed) override
+    {
+        m_speed = speed;
+    }
 };
+
+void handleBounce(
+    ShapeNode& shape,
+    int windowWidth,
+    int windowHeight
+)
+{
+    sf::FloatRect bounds = shape.getBounds();
+    sf::Vector2f speed = shape.getSpeed();
+
+    if (bounds.left < 0)
+    {
+        speed.x = std::abs(speed.x);
+    }
+    else if (bounds.left + bounds.width > windowWidth)
+    {
+        speed.x = -std::abs(speed.x);
+    }
+
+    if (bounds.top < 0)
+    {
+        speed.y = std::abs(speed.y);
+    }
+    else if (bounds.top + bounds.height > windowHeight)
+    {
+        speed.y = -std::abs(speed.y);
+    }
+
+    shape.setSpeed(speed);
+}
 
 void loadFromFile(
     const std::string& filename,
@@ -385,6 +429,8 @@ void renderShapes(
     {
         sf::Vector2f nodeSpeed = shape->getSpeed();
         shape->moveNode(nodeSpeed);
+
+        handleBounce(*shape, configObject.getWidth(), configObject.getHeight());
 
         ShapeVariant node = shape->getNode();
 
